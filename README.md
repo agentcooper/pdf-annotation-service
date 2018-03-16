@@ -13,6 +13,7 @@ This is proof-of-concept for embedding highlights into PDF documents.
 ```
 npm install
 npm start
+
 open http://localhost:3000
 ```
 

@@ -1,108 +1,111 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <title>PDF annotation service</title>
-    <style>
-      body {
-        font: menu;
-      }
 
-      .pdf {
-        width: 400px;
-        height: 500px;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>PDF annotation service in JS 😳</h1>
+<head>
+  <meta charset="utf-8">
+  <title>PDF annotation service</title>
+  <style>
+    body {
+      font: menu;
+    }
 
-    <div>
-      <input value="https://arxiv.org/pdf/1707.05786.pdf" id="url" style="width: 500px;"/>
-      <button id="add-highlights-button">Add highlights</button>
-    </div>
+    .pdf {
+      width: 400px;
+      height: 500px;
+    }
+  </style>
+</head>
 
-    <div style="margin-top: 1em;">
-      <textarea id="status" style="width: 500px; height: 150px;" readonly></textarea>
-      <textarea id="json" style="width: 300px; height: 150px;"></textarea>
-    </div>
+<body>
+  <h1>PDF annotation service in JS 😳</h1>
 
-    <div style="margin-top: 1em;">
-      <iframe id="input" class="pdf"></iframe>
-      <iframe id="output" class="pdf"></iframe>
-    </div>
-  </body>
-  <script src="//mozilla.github.io/pdf.js/build/pdf.js"></script>
-  <script>
-const defaultAnnotations = [
-  {
-    page: 0,
-    position: [30.1, 500, 200.1, 200.1],
-    content: 'lorem ipsum 1',
-    color: [255, 0, 0],
-  },
-  {
-    page: 0,
-    position: [300, 600, 400, 700],
-    content: 'lorem ipsum 2',
-    color: [0, 255, 0],
-  },
-];
+  <div>
+    <input value="https://arxiv.org/pdf/1707.05786.pdf" id="url" style="width: 500px;" />
+    <button id="add-highlights-button">Add highlights</button>
+  </div>
 
-document.getElementById('json').value = JSON.stringify(defaultAnnotations, null, 2);
+  <div style="margin-top: 1em;">
+    <textarea id="status" style="width: 500px; height: 150px;" readonly></textarea>
+    <textarea id="json" style="width: 300px; height: 150px;"></textarea>
+  </div>
 
-PDFJS.workerSrc = '//mozilla.github.io/pdf.js/build/pdf.worker.js';
+  <div style="margin-top: 1em;">
+    <iframe id="input" class="pdf"></iframe>
+    <iframe id="output" class="pdf"></iframe>
+  </div>
+</body>
+<script src="https://unpkg.com/pdfjs-dist@2.0.159/build/pdf.js"></script>
+<script>
+  const defaultAnnotations = [
+    {
+      page: 0,
+      position: [30.1, 500, 200.1, 200.1],
+      content: 'lorem ipsum 1',
+      color: [255, 0, 0],
+    },
+    {
+      page: 0,
+      position: [300, 600, 400, 700],
+      content: 'lorem ipsum 2',
+      color: [0, 255, 0],
+    },
+  ];
 
-const log = s => {
-  const node = document.getElementById('status');
-  node.value = node.value + s + '\n';
-  console.log(s);
-};
+  document.getElementById('json').value = JSON.stringify(defaultAnnotations, null, 2);
 
-const createObjectURLFromData = data => {
-  var blob = new Blob([data], { type: 'application/pdf' });
-  return URL.createObjectURL(blob);
-};
+  PDFJS.workerSrc = 'https://unpkg.com/pdfjs-dist@2.0.159/build/pdf.worker.js';
 
-const run = (url, annotations) => {
-  log(`Downloading ${url}...`);
-  PDFJS.getDocument(url).then(pdf => {
-    log(`Got PDF, ${pdf.pdfInfo.numPages} page(s)`);
-    pdf.getData().then(data => {
-      log(`Got binary data, ${Math.ceil(data.length / 1000)} kB`);
+  const log = s => {
+    const node = document.getElementById('status');
+    node.value = node.value + s + '\n';
+    console.log(s);
+  };
 
-      document.getElementById('input').src = createObjectURLFromData(data);
+  const createObjectURLFromData = data => {
+    var blob = new Blob([data], { type: 'application/pdf' });
+    return URL.createObjectURL(blob);
+  };
 
-      log('Sending data for processing...');
+  const run = (url, annotations) => {
+    log(`Downloading ${url}...`);
+    PDFJS.getDocument(url).then(pdf => {
+      log(`Got PDF, ${pdf.pdfInfo.numPages} page(s)`);
+      pdf.getData().then(data => {
+        log(`Got binary data, ${Math.ceil(data.length / 1000)} kB`);
 
-      var xhr = new XMLHttpRequest();
-      xhr.open('POST', `http://localhost:3000/process?annotations=${JSON.stringify(annotations)}`);
-      xhr.setRequestHeader('Content-Type', 'application/pdf');
-      xhr.send(data);
+        document.getElementById('input').src = createObjectURLFromData(data);
 
-      xhr.responseType = 'arraybuffer';
+        log('Sending data for processing...');
 
-      xhr.onload = () => {
-        const arraybuffer = xhr.response;
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', `http://localhost:3000/process?annotations=${JSON.stringify(annotations)}`);
+        xhr.setRequestHeader('Content-Type', 'application/pdf');
+        xhr.send(data);
 
-        log(`Got response, ${Math.ceil(arraybuffer.byteLength / 1000)} kB`);
+        xhr.responseType = 'arraybuffer';
 
-        document.getElementById('output').src = createObjectURLFromData(arraybuffer);
-      };
+        xhr.onload = () => {
+          const arraybuffer = xhr.response;
+
+          log(`Got response, ${Math.ceil(arraybuffer.byteLength / 1000)} kB`);
+
+          document.getElementById('output').src = createObjectURLFromData(arraybuffer);
+        };
+      });
     });
+  };
+
+  document.getElementById('add-highlights-button').addEventListener('click', () => {
+    const url = document.getElementById('url').value;
+    const annotations = JSON.parse(document.getElementById('json').value);
+
+    if (!url || !annotations) {
+      throw new Error('Check input');
+    }
+
+    console.log('Running', url, annotations);
+    run(url, annotations);
   });
-};
-
-document.getElementById('add-highlights-button').addEventListener('click', () => {
-  const url = document.getElementById('url').value;
-  const annotations = JSON.parse(document.getElementById('json').value);
-
-  if (!url || !annotations) {
-    throw new Error('Check input');
-  }
-
-  console.log('Running', url, annotations);
-  run(url, annotations);
-});
 </script>
+
 </html>
