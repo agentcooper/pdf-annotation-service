@@ -11,6 +11,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "hummus": "^1.0.77"
+    "hummus": "^1.0.108"
   }
 }
